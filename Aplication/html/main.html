@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>映心</title>
+		<!--一些样式-->
+		<style>
+			/*时间的显示*/
+			p#time{
+				position: absolute;
+                top: 87.5%;
+                left: 10%;
+				color:#3f3f3f
+			}
+			test{
+				color:#87d1f6
+			}
+			header {
+				position : absolute;
+				top:0%;
+				left:0%;
+				height: 7.5%;
+				width: 100%;
+				background-color: #81a9c3;
+			}
+			footer {
+				position: absolute;
+				top:95%;
+				left:0%;
+				height: 5%;
+				width: 100%;
+				background-color: #81a9c3;
+			}
+			input#userID{
+				position: absolute;
+				top:67.5%;
+				left:10%;
+				width: 50%;
+				height: 5.75%;
+				background-color: #def1fd;
+				font-size: 20px;
+			}
+			input#date{
+				position: absolute;
+				top:77.5%;
+				left:10%;
+				width: 50%;
+				height: 5.75%;
+				background-color: #def1fd;
+				font-size:20px;
+			}
+			button#charInvisibleBtn{
+				position: absolute;
+				top:96%;
+				left: 5%;
+				height: 3%;
+				background:#81a9c3;
+				font-size:10px;
+			}
+			button#charVisibleBtn{
+				position: absolute;
+				top:96%;
+				left:55%;
+				height:3%;
+				background:#81a9c3;
+				font-size:10px;
+			}
+			img#currentRateIcon{
+				position: absolute;
+				left:10%;
+				top:10%;
+				height:4%;
+			}
+			p#currentRate{
+				position:absolute;
+				left:20%;
+				top:8%;
+				font-size:15px;
+				color:crimson;
+			}
+			img#maxRateIcon{
+				position: absolute;
+				left:40%;
+				top:10%;
+				height:4%;
+			}
+			p#maxRate{
+				position:absolute;
+				left:50%;
+				top:8%;
+				font-size:15px;
+				color:crimson;
+			}
+			img#minRateIcon{
+				position: absolute;
+				left:70%;
+				top:10%;
+				height:4%;
+			}
+			p#minRate{
+				position:absolute;
+				left:80%;
+				top:8%;
+				font-size:15px;
+				color:crimson;
+				text-align: left;
+			}
+		</style>
+	</head>
+	<body>
+		<header></header>
+		<p id = "time"></p>	
+		<footer></footer>
+		<input id ="userID" type="text" placeholder="userID" onfocus="hideAllButton()" onblur="showAllButton()">
+		<input id ="date" type="text" placeholder="yyyy-mm-dd" onfocus="hideAllButton()" onblur="showAllButton()">
+		<button id = "charInvisibleBtn" tapmode="active" onclick="fnOpen(false)">无法显示折线图</button>
+		<button id = "charVisibleBtn" tapmode="active" onclick="fnOpen(true)">恢复自适应</button>
+		<img id = "currentRateIcon" src="../icon/currentRateIcon.png">
+		<p id=currentRate>当前:--</p>
+		<img id="maxRateIcon" src="../icon/maxRateIcon.png">
+		<p id=maxRate>最大:--</p>
+		<img id="minRateIcon" src="../icon/minRateIcon.png">
+		<p id=minRate>最小:--</p>
+	</body>
+	<script type="text/javascript" src="../script/api.js"></script>
+	<script id = "api_related">
+		/*初始化*/
+		var chart;//折线图
+		var database;//数据库
+		var chartID=-1;//折线图ID
+		var hideCharBtn;//测试按钮，隐藏折线图
+		var showChartBtn;//测试按钮，显示折线图
+		var queryByIdBtn;//根据ID查当天的
+		var queryByDateBtn;//根据日期和ID查对应日子的
+		var btnOperator;//用于进行按钮相关的操作
+		var date = new Date();//日期
+		var cors = [{xValue: 1,yValue: 20},{xValue: 75,yValue: 20}];//初始坐标数组
+		var buttonIDList=[];
+		/*后续正式逻辑中会用到的函数*/
+		//隐藏全部按钮
+		function hideAllButton(){
+			if(buttonIDList.length!=0){
+				for(var i=0;i<buttonIDList.length;i++){
+					btnOperator.hide({id:buttonIDList[i]});
+				}
+			}
+		}
+		//显示全部按钮
+		function showAllButton(){
+			if(buttonIDList.length!=0){
+				for(var i=0;i<buttonIDList.length;i++){
+					btnOperator.show({id:buttonIDList[i]});
+				}
+			}
+		}
+		//根据ID查询
+		function queryById(userID){
+			if(userID==""){
+				alert("害，是不是得来个用户ID瞧瞧？");
+			}else{
+				if(database.isConnected()){
+					var sql = "select rate from heartRate where userID ='"+userID+"' and time=date(now());"
+					database.query(
+					{sql: sql},
+					function(ret){	
+						if(ret["code"]!=-1){
+							var heartRateSet = ret["result"];
+							cors=[];
+							var maxRate=0;
+							var minRate=9999;
+							for(i=0;i<heartRateSet.length;i++){
+								var x = i;
+								var y = heartRateSet[i]["rate"];
+								if(y>maxRate)maxRate=y;
+								if(y<minRate)minRate=y;
+								cors.push({xValue: x, yValue: y});
+							}
+							if(maxRate!=0){
+								document.getElementById("maxRate").innerHTML="最大:"+maxRate;
+								document.getElementById("currentRate").innerHTML="当前:"+heartRateSet[heartRateSet.length-1]["rate"];
+								document.getElementById("minRate").innerHTML="最小:"+minRate;
+							}else{
+								document.getElementById("maxRate").innerHTML="最大:--";
+								document.getElementById("currentRate").innerHTML="当前:--";
+								document.getElementById("minRate").innerHTML="最小:--";
+							}
+						}else{
+							cors = [{xValue: 1,yValue: 20},{xValue: 75,yValue: 20}];
+							document.getElementById("maxRate").innerHTML="最大:--";
+							document.getElementById("currentRate").innerHTML="当前:--";
+							document.getElementById("minRate").innerHTML="最小:--";
+						}
+					}
+				)
+				}else{
+					alert("嗯...暂时连不上数据库");
+				}
+			}
+		}
+		//根据日期查询
+		function queryByIdAndDate(userID, day){
+			if(userID==""){
+				alert("害，是不是得来个用户ID瞧瞧？");
+			}else{
+				if(day=="") alert("挑个近几天的良辰吉日吧！");
+				else{
+					if(database.isConnected()){
+						var sql = "select rate from heartRate where userID ='"+userID+"' and time='"+day+"';"
+						database.query(
+						{sql: sql},
+						function(ret){	
+							if(ret["code"]!=-1){
+								var heartRateSet = ret["result"];
+								cors=[];
+								var maxRate=0;
+								var minRate=9999;
+								for(i=0;i<heartRateSet.length;i++){
+									var x = i;
+									var y = heartRateSet[i]["rate"];
+									if(y>maxRate) maxRate = y;
+									if(y<minRate) minRate = y;
+									cors.push({xValue: x, yValue: y});
+								}
+								if(maxRate!=0){
+									document.getElementById("maxRate").innerHTML="最大:"+maxRate;
+									document.getElementById("currentRate").innerHTML="当前:"+heartRateSet[heartRateSet.length-1]["rate"];
+									document.getElementById("minRate").innerHTML="最小:"+minRate;
+								}else{
+									document.getElementById("maxRate").innerHTML="最大:--";
+									document.getElementById("currentRate").innerHTML="当前:--";
+									document.getElementById("minRate").innerHTML="最小:--";
+								}
+							}else{
+								cors = [{xValue: 1,yValue: 20},{xValue: 75,yValue: 20}];
+								document.getElementById("maxRate").innerHTML="最大:--";
+								document.getElementById("currentRate").innerHTML="当前:--";
+								document.getElementById("minRate").innerHTML="最小:--";
+							}
+						}
+					)
+					}else{
+						alert("嗯...暂时连不上数据库");
+					}
+				}
+			}
+		}
+		//显示折线图
+		function fnShow() {
+			//chartID:需要隐藏的折线图ID，function(ret):获取到返回值之后的操作
+			chart.show({
+				id : chartID
+			}, function(ret) {
+			});
+		}
+		//隐藏折线图
+		function fnHide() {
+			//chartID:需要隐藏的图表id，function(ret):获取到返回值之后的操作
+			chart.hide({
+				id : chartID
+			}, function(ret) {
+			});
+		}
+		//初始化测试按钮
+		function UIButton_open() {
+			//隐藏图标按钮
+			hideCharBtn.open({
+                        rect: {
+							x: api.frameWidth*0.1,
+                            y: api.frameHeight*0.52,//0.475
+                            w: api.frameWidth*0.8,
+                            h: api.frameHeight*0.045//0.0575
+                        },
+                        corner: 5,
+						border:{
+							borderColor: '#696969',
+							borderWidth: '2'
+						},
+                        bg: {
+                                normal: '#FFFFFF',
+                                highlight: '#B6B6B6',
+                                active: '#FFFFFF'
+                        },
+                        title: {
+                                size: 16,
+                                highlight: '隐藏折线图',
+                                active: '隐藏折线图',
+                                normal: '隐藏折线图',
+                                highlightColor: '#0D0D0D',
+                                activeColor: '#0D0D0D',
+                                normalColor: '#0D0D0D',
+                                alignment: 'center',
+                        },
+						fixedOn: api.frameName,
+						fixed: true,
+						move: true
+                },function(ret, err) {
+					if (ret) {
+                       fnHide();
+					   buttonIDList.push(ret["id"]);
+                    } 
+					else {
+                       alert(JSON.stringify(err));
+                    }
+            });
+			//显示图标按钮
+			showChartBtn.open({
+                        rect: {
+                            x: api.frameWidth*0.1,
+                            y: api.frameHeight*0.59,//0.575
+                            w: api.frameWidth*0.8,
+                            h: api.frameHeight*0.045//0.0575
+                        },
+                        corner: 5,
+						border:{
+							borderColor: '#696969',
+							borderWidth: '2'
+						},
+                        bg: {
+                                normal: '#FFFFFF',
+                                highlight: '#B6B6B6',
+                                active: '#FFFFFF'
+                        },
+                        title: {
+                                size: 16,
+                                highlight: '显示折线图',
+                                active: '显示折线图',
+                                normal: '显示折线图',
+                                highlightColor: '#0D0D0D',
+                                activeColor: '#0D0D0D',
+                                normalColor: '#0D0D0D',
+                                alignment: 'center',
+                        },
+						fixedOn: api.frameName,
+						fixed: true,
+						move: true
+                },function(ret, err) {
+					if (ret) {
+                       fnShow();
+					   buttonIDList.push(ret["id"]);
+                    } 
+					else {
+                       alert(JSON.stringify(err));
+                    }
+            });
+			//查询个人当日心率按钮
+			queryByIdBtn.open({
+                        rect: {
+                            x: api.frameWidth*0.7,
+                            y: api.frameHeight*0.675,
+                            w: api.frameWidth*0.2,
+                            h: api.frameHeight*0.0575
+                        },
+                        corner: 5,
+						border:{
+							borderColor: '#696969',
+							borderWidth: '2'
+						},
+                        bg: {
+                                normal: '#FFFFFF',
+                                highlight: '#B6B6B6',
+                                active: '#FFFFFF'
+                        },
+                        title: {
+                                size: 14,
+                                highlight: '查询今日',
+                                active: '查询今日',
+                                normal: '查询今日',
+                                highlightColor: '#0D0D0D',
+                                activeColor: '#0D0D0D',
+                                normalColor: '#0D0D0D',
+                                alignment: 'center',
+                        },
+						fixedOn: api.frameName,
+						fixed: true,
+						move: true
+                },function(ret, err) {
+					if (ret) {
+						buttonIDList.push(ret["id"]);
+                        queryById(document.getElementById("userID").value);
+                    } 
+					else {
+                        alert(JSON.stringify(err));
+                    }
+            });
+			queryByDateBtn.open({
+                        rect: {
+                            x: api.frameWidth*0.7,
+                            y: api.frameHeight*0.775,
+                            w: api.frameWidth*0.2,
+                            h: api.frameHeight*0.0575
+                        },
+                        corner: 5,
+						border:{
+							borderColor: '#696969',
+							borderWidth: '2'
+						},
+                        bg: {
+                                normal: '#FFFFFF',
+                                highlight: '#B6B6B6',
+                                active: '#FFFFFF'
+                        },
+                        title: {
+                                size: 14,
+                                highlight: '查询当日',
+                                active: '查询当日',
+                                normal: '查询当日',
+                                highlightColor: '#0D0D0D',
+                                activeColor: '#0D0D0D',
+                                normalColor: '#0D0D0D',
+                                alignment: 'center',
+                        },
+						fixedOn: api.frameName,
+						fixed: true,
+						move: true
+                },function(ret, err) {
+					if (ret) {
+						buttonIDList.push(ret["id"]);
+						queryByIdAndDate(document.getElementById("userID").value,document.getElementById("date").value);
+                    } 
+					else {
+                        alert(JSON.stringify(err));
+                    }
+            });
+        }
+		//打开图表，参数意义详见apicloud模块文档
+		function fnOpen(vibrant) {
+			var configure;
+			if(chartID!=-1) chart.hide({id:chartID});
+			if(vibrant){
+				configure ={
+					x: api.frameWidth*0.1,
+                    y: api.frameHeight*0.2,
+                    w: api.frameWidth*0.8,
+                    h: api.frameHeight*0.25
+				}
+			}else{
+				configure ={
+					x: 60,//20,
+                    y: 280,//35,
+                    w: 480,
+                    h: 240
+				}
+			}
+			chart.open({
+				rect : configure ,
+				bg : '#F6F6F6',
+				coordinate : {
+					yAxis : {
+						max : 125,
+						min : 0,
+						step : 25,
+						width : 40,
+						size : 12,
+						color : '#8d8d8d'
+					},
+					xAxis : {
+						max:24,
+						min: 0,
+						step:6,
+						minStep : 1,
+						minStepGap:20,
+						height : 30,
+						size : 12,
+						color: '#8d8d8d'
+					},
+					border : {
+						size : 0.5,
+						color : '#1153b6'
+					},
+					/*border:{
+                        borderColor: '#B58F74',    //（可选项）字符串类型；按钮边框颜色；默认：'#000'
+                        borderWidth: '1', //（可选项）数字类型；按钮边框宽度；默认：0 
+                    },*/
+					brokenLine : {
+						color : '#DD4E00',
+						width : 2.5
+					}
+				},
+				shadow : [{
+					color:'#4AFF8B',
+					/*yAxis: {            //JSON对象；阴影区域在 y 轴上的区间
+                      min: 100,         //数字类型；最小值
+                      max: 500         //数字类型；最大值
+                    },*/
+					/*dash:{
+						color:'#B58F74',
+					}*/
+				}],
+				datas : cors,
+				fixedOn: api.frameName,
+				fixed: true,
+				move: true,
+			}, function(ret) {
+				if (ret) {
+					chartID = ret.id;
+				}
+			});
+		}
+		//重新加载数据（重新画图）
+		function fnReloadData() {
+			chart.reloadData({
+				id : chartID,
+				type : 'updateAll',
+				datas : cors
+			}, function(ret) {
+				//回调函数
+			});
+		}
+		//数据库连接
+		function testConnect(){
+			//对于没有连接上的才尝试连接
+			if(!database.isConnected()){
+				//url当中：139.9.142.29（服务器IP），3306（数据库通信端口），heartRateDB（数据库名称）
+				database.connect({
+					url: "jdbc:mysql://139.9.142.29:3306/heartRateDB?useUnicode=true",
+					user: "allQualified",
+					pwd: "1q2w3e4r"
+				}, function(ret){
+				});
+			}
+		}
+	</script>
+	<script type="text/javascript" id = "normal">
+	/*会用到的函数*/
+		function updateTime(){
+			date = new Date();//获得时间
+			//获取当前html文件当中，id被标识为time的元素，将其内部内容改写为转化为字符串的时间
+			document.getElementById("time").innerHTML = date.toUTCString();
+		}
+		/*数据初始化*/
+		apiready = function() {
+			//api组件初始化。所有涉及到API提供的功能最好都在这里定义和使用
+			chart = api.require('divisionalLineChart');
+			database = api.require('mySQL');
+			hideCharBtn = api.require('UIButton');
+			showChartBtn = api.require('UIButton');
+			queryByIdBtn = api.require('UIButton');
+			queryByDateBtn=api.require('UIButton');
+			btnOperator=api.require('UIButton');
+			UIButton_open();
+			fnOpen(true);
+			setInterval(fnReloadData, 10);//每0.01秒执行一次装入数据
+        }
+		//初始化
+		document.getElementById("time").innerHTML = date.toUTCString();//时间初始化设定
+		setInterval(updateTime, 1000);//每一秒钟就执行一次更新时间
+		setInterval(testConnect,1000);//每一秒执行一次连接检查
+	</script>
+</html>
