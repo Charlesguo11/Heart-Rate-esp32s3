@@ -1,5 +1,5 @@
 ﻿
-> 提示：该项目建立于ubuntu18.04版本，esp-idf版本为4.4.1，ESP32S3-EYE开发板由乐鑫公司提供，在此表示感谢。项目中的rPPG技术来源于github上的nasir，本项目所有代码均已开源放置于github中，链接在文章底部可以找到
+> 提示：该项目建立于ubuntu18.04版本，esp-idf版本为4.4.1，ESP32S3-EYE开发板由乐鑫公司提供，在此表示感谢。项目中的rPPG技术来源于github上的nasir
 
 @[TOC](文章目录)
 
